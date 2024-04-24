@@ -15,6 +15,8 @@ find_package(glm CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED core glfw-binding opengl3-binding)
 find_package(GLEW REQUIRED)
 find_package(TIRA REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(Boost REQUIRED COMPONENTS program_options)
 
 
 #build the executable in the binary directory on MS Visual Studio
@@ -48,4 +50,6 @@ target_link_libraries(psf
 				${OPENGL_LIBRARIES}
 				${CMAKE_DL_LIBS}
 				PRIVATE imgui::imgui
+				Boost::program_options
+				Eigen3::Eigen
 )
