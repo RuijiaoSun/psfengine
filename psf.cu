@@ -50,7 +50,8 @@ __global__ void kernelPSF(complex<float>* field, unsigned int field_res, float e
 }
 
 __global__ void kernelPSFSubstrate(complex<float>* field, unsigned int field_res, float extent, float w, int axis,
-    tira::planewave<float>* I, tira::planewave<float>* R, tira::planewave<float>* T, unsigned int N) {
+    tira::planewave<float>* I, tira::planewave<float>* R, tira::planewave<float>* T, unsigned int N,
+    bool incident = true, bool reflected = true, bool transmitted = true) {
     unsigned int ui = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int vi = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -65,29 +66,29 @@ __global__ void kernelPSFSubstrate(complex<float>* field, unsigned int field_res
         
         if (axis == 0) {
             if (v <= 0) {
-                E += I[pi].E(w, u, v);
-                E += R[pi].E(w, u, v);
+                if (incident) E += I[pi].E(w, u, v);
+                if (reflected) E += R[pi].E(w, u, v);
             }
             else {
-                E += T[pi].E(w, u, v);
+                if (transmitted) E += T[pi].E(w, u, v);
             }
         }
         else if (axis == 1) {
             if (v <= 0) {
-                E += I[pi].E(u, w, v);
-                E += R[pi].E(u, w, v);
+                if (incident) E += I[pi].E(u, w, v);
+                if (reflected) E += R[pi].E(u, w, v);
             }
             else {
-                E += T[pi].E(u, w, v);
+                if (transmitted) E += T[pi].E(u, w, v);
             }
         }
         else {
             if (w <= 0) {
-                E += I[pi].E(u, v, w);
-                E += R[pi].E(u, v, w);
+                if (incident) E += I[pi].E(u, v, w);
+                if (reflected) E += R[pi].E(u, v, w);
             }
             else {
-                E += T[pi].E(u, w, v);
+                if (transmitted) E += T[pi].E(u, v, w);
             }
         }
 
@@ -130,7 +131,8 @@ void gpuPSF(complex<float>* field, unsigned int field_res, float extent, float w
 }
 
 void gpuPSFSubstrate(cuda::std::complex<float>* field, unsigned int field_res, float extent, float w, int axis, 
-    tira::planewave<float>* I, tira::planewave<float>* R, tira::planewave<float>* T, unsigned int N){
+    tira::planewave<float>* I, tira::planewave<float>* R, tira::planewave<float>* T, unsigned int N,
+    bool incident = true, bool reflected = true, bool transmitted = true){
 
     complex<float>* gpu_field;
     unsigned int field_size = sizeof(complex<float>) * field_res * field_res * 3;
@@ -152,7 +154,9 @@ void gpuPSFSubstrate(cuda::std::complex<float>* field, unsigned int field_res, f
 
     dim3 threads(32, 32);
     dim3 blocks(field_res / threads.x + 1, field_res / threads.y + 1);
-    kernelPSFSubstrate <<<blocks, threads >>> (gpu_field, field_res, extent, w, axis, gpu_I, gpu_R, gpu_T, N);
+    kernelPSFSubstrate <<<blocks, threads >>> (gpu_field, field_res, extent, w, axis, 
+        gpu_I, gpu_R, gpu_T, N,
+        incident, reflected, transmitted);
 
     HANDLE_ERROR(cudaMemcpy(field, gpu_field, field_size, cudaMemcpyDeviceToHost));
 }
