@@ -41,6 +41,7 @@ include_directories(
 add_executable(psf
 				psf.cpp
 				psf.cu
+				ImGuiFileDialog/ImGuiFileDialog.cpp
 )
 
 target_link_libraries(psf

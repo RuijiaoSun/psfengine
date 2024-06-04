@@ -15,6 +15,8 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_internal.h"
+#include "ImGuiFileDialog/ImGuiFileDialog.h"
+#include <extern/libnpy/npy.hpp>
 
 #include <iostream>
 #include <string>
@@ -40,6 +42,8 @@ void gpuPSFSubstrate(cuda::std::complex<float>* field, unsigned int field_res, f
 
 // User interface variables
 GLFWwindow* window;                                     // pointer to the GLFW window that will be created (used in GLFW calls to request properties)
+double window_width = 1600;
+double window_height = 1200;
 const char* glsl_version = "#version 130";              // specify the version of GLSL
 ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.00f);   // specify the OpenGL color used to clear the back buffer
 float ui_scale = 1.5f;                                  // scale value for the UI and UI text
@@ -96,6 +100,7 @@ precision planes[3] = { 0.0f, 0.0f, 0.0f };
 int axis = 0;
 precision spectrum[2] = { 0.2f, 0.7f };
 
+double xpos, ypos;                                      // cursor positions
 // UI Elements
 precision display_size = 500;                             // size of each field image on the screen
 
@@ -607,7 +612,47 @@ void RenderUI() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    
+    if (ImGui::GetIO().MouseClicked[1])
+    {
+        glfwGetCursorPos(window, &xpos, &ypos);
+        ImGui::OpenPopup("save_slice");
+    }
+    if (ImGui::BeginPopup("save_slice"))
+    {
+        unsigned int N = pow(2, PSFExp);
+        if (ImGui::Button("Save Slice")) {                                              // create a button that opens a file dialog
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseNpyFile", "Choose NPY File", ".npy,.npz", ".");
+        }
+        if (ImGuiFileDialog::Instance()->Display("ChooseNpyFile")) {				    // if the user opened a file dialog
+            if (ImGuiFileDialog::Instance()->IsOk()) {								    // and clicks okay, they've probably selected a file
+                std::string filename = ImGuiFileDialog::Instance()->GetFilePathName();	// get the name of the file
+                std::string extension = filename.substr(filename.find_last_of(".") + 1);
+
+                std::cout << "Cursor position: " << xpos << ", " << ypos << std::endl;
+                std::cout << "File chosen: " << filename << std::endl;
+                // RUIJIAO: determine which slice is clicked
+                //          save the appropriate slice as an NPY file
+                // Save the PSF
+                if (true) {
+                    const std::vector<long unsigned> shape{ (long unsigned)PSFRes, (long unsigned)PSFRes, 3 };
+                    const bool fortran_order{ false };
+                    npy::SaveArrayAsNumpy(filename, fortran_order, shape.size(), shape.data(), PSF.data());
+                }
+
+                // Wrong click at the upper left region
+                else {
+                    std::cout << "Wrong click at the wrong region. " << std::endl;
+                    exit(1);
+                }
+            }
+            ImGuiFileDialog::Instance()->Close();									// close the file dialog box
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
+
 
     // Back Aperture Control Window
     {
